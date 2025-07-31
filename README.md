@@ -4,7 +4,7 @@
 
 **Second You** is a full-stack web application that helps users simulate alternate life paths based on critical decisions they've made or are considering. Using advanced AI (Gemini 1.5 Pro), the system generates realistic 1, 3, and 10-year future timelines based on the user's current life situation and alternate choices.
 
-![Second You Preview](https://via.placeholder.com/800x400?text=Second+You+Preview)
+![Second You Preview](Second_You_Preview.jpg)
 
 ## 🌟 Features
 
