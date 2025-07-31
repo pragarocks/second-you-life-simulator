@@ -1,13 +1,14 @@
 # 🚀 Quick Reference Card
 
 ## ⚡ Start the App
-```bash
-# Option 1: One-click (Recommended)
-Double-click: start-app.bat
+```batch
+# Recommended: Batch Start
+npm run start:app
+# OR: Double-click start-app.bat
 
-# Option 2: Manual
-Terminal 1: cd backend && npm run dev
-Terminal 2: cd frontend && npm start
+# Manual (separate terminals)
+Terminal 1: cd backend; npm run dev
+Terminal 2: cd frontend; npm start
 ```
 
 ## 🌐 URLs
@@ -18,14 +19,18 @@ Terminal 2: cd frontend && npm start
 - Press `Ctrl + C` in each terminal window
 
 ## 🔧 Common Commands
-```bash
+```powershell
 # Check if ports are in use
 netstat -ano | findstr :3000
 netstat -ano | findstr :5000
 
-# Restart servers
-cd backend && npm run dev
-cd frontend && npm start
+# Test if servers are running
+Invoke-WebRequest -Uri "http://localhost:5000/health" -UseBasicParsing
+Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing
+
+# Restart servers (manual)
+cd backend; npm run dev
+cd frontend; npm start
 ```
 
 ## 💡 Best Input Examples

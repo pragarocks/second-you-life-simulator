@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputForm from '../components/InputForm';
 import { Brain, Clock, Users, Lightbulb } from 'lucide-react';
@@ -6,6 +6,25 @@ import { Brain, Clock, Users, Lightbulb } from 'lucide-react';
 const Home = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('checking');
+
+  // Check backend connection on component mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/health`);
+        if (response.ok) {
+          setConnectionStatus('connected');
+        } else {
+          setConnectionStatus('error');
+        }
+      } catch (error) {
+        setConnectionStatus('error');
+      }
+    };
+
+    checkConnection();
+  }, []);
 
   const handleSimulation = async (formData) => {
     setIsLoading(true);
@@ -25,16 +44,23 @@ const Home = () => {
 
       const simulationData = await response.json();
       
-      // Navigate to results page with simulation data
+      // Navigate to results page with dual-path simulation data
       navigate('/results', { 
         state: { 
-          simulation: simulationData.simulation,
+          alternatePath: simulationData.simulation.alternatePath,
+          currentPath: simulationData.simulation.currentPath,
+          metadata: simulationData.simulation.metadata,
           originalData: formData 
         } 
       });
     } catch (error) {
       console.error('Error during simulation:', error);
-      alert('Something went wrong. Please try again.');
+      
+      if (error.message.includes('fetch')) {
+        alert('⚠️ Connection Error: Please make sure the backend server is running on http://localhost:5000\n\nTry: npm run start:clean');
+      } else {
+        alert('Something went wrong. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +77,8 @@ const Home = () => {
           What if you made that big decision differently? Use AI to simulate alternate life paths 
           and discover the possibilities that await in your parallel futures.
         </p>
+        
+
         
         {/* Feature Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-12">

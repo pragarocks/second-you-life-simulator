@@ -14,32 +14,29 @@ class GeminiClient {
   }
 
   /**
-   * Generate a life simulation based on user input
+   * Generate a life simulation with both current and alternate paths
    */
   async generateLifeSimulation(userData) {
     try {
-      const prompt = this.buildPrompt(userData);
-      console.log('🤖 Sending prompt to Gemini AI...');
+      console.log('🤖 Generating dual life path simulation...');
+      
+      // Generate both paths in parallel for efficiency
+      const [alternatePath, currentPath] = await Promise.all([
+        this.generateAlternatePath(userData),
+        this.generateCurrentPath(userData)
+      ]);
 
-      const response = await this.genAI.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          temperature: 0.8,
-          topP: 0.9,
-          topK: 40,
-          maxOutputTokens: 4000,
-        },
-      });
-
-      const text = response.text;
-
-      if (!text) {
-        throw new Error('Empty response from Gemini AI');
-      }
-
-      console.log('✅ Received response from Gemini AI');
-      return this.parseSimulationResponse(text);
+      console.log('✅ Received both life path simulations');
+      
+      return {
+        alternatePath,
+        currentPath,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          userAge: userData.user_age,
+          alternateDecision: userData.user_alternate_path
+        }
+      };
 
     } catch (error) {
       console.error('❌ Gemini AI Error:', error);
@@ -57,9 +54,59 @@ class GeminiClient {
   }
 
   /**
-   * Build the prompt for life simulation
+   * Generate alternate path simulation
    */
-  buildPrompt(userData) {
+  async generateAlternatePath(userData) {
+    const prompt = this.buildAlternatePathPrompt(userData);
+    
+    const response = await this.genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: 0.8,
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: 3000,
+      },
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error('Empty response from Gemini AI for alternate path');
+    }
+
+    return this.parseSimulationResponse(text);
+  }
+
+  /**
+   * Generate current path simulation
+   */
+  async generateCurrentPath(userData) {
+    const prompt = this.buildCurrentPathPrompt(userData);
+    
+    const response = await this.genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 30,
+        maxOutputTokens: 3000,
+      },
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error('Empty response from Gemini AI for current path');
+    }
+
+    return this.parseSimulationResponse(text);
+  }
+
+  /**
+   * Build the prompt for alternate path simulation
+   */
+  buildAlternatePathPrompt(userData) {
     const { user_age, user_location, user_profession, user_traits, user_alternate_path } = userData;
 
     return `You are a compassionate and imaginative life simulator, helping the user explore an alternate version of their life. They are reflecting on a life decision or considering a new one.
@@ -95,6 +142,47 @@ Guidelines:
 - Consider practical aspects like finances, relationships, location
 - Make it personal and relatable
 - Keep each section focused and engaging
+
+IMPORTANT: Use the exact format markers **YEAR_1:**, **YEAR_3:**, **YEAR_10:**, and **FUTURE_MESSAGE:** so the response can be properly parsed.`;
+  }
+
+  /**
+   * Build the prompt for current path simulation
+   */
+  buildCurrentPathPrompt(userData) {
+    const { user_age, user_location, user_profession, user_traits } = userData;
+
+    return `You are a compassionate and imaginative life simulator, helping the user explore what their life would look like if they CONTINUE on their current path without making the big change they're considering.
+
+User Profile:
+- Age: ${user_age}
+- Current Location: ${user_location}
+- Current Profession / Life Status: ${user_profession}
+- Key Traits: ${user_traits}
+
+Generate a first-person narrative imagining what their life would realistically look like if they stay on their current trajectory, make incremental progress, but don't pursue the major change they're contemplating. Structure your response with clear sections:
+
+**YEAR_1:**
+[What happens after 1 year of staying the course? Include natural progression, comfort zones, gradual improvements, but also any sense of routine or wondering "what if." Be realistic about both satisfaction and potential restlessness. Write 2-3 paragraphs.]
+
+**YEAR_3:**
+[Where are they at year 3 of the current path? Show steady progression, deeper roots in current situation, accumulated experience and relationships. Include both the stability gained and any dreams deferred. Write 2-3 paragraphs.]
+
+**YEAR_10:**
+[How has life evolved at year 10 on the current path? Show the mature version of their current life, achievements within their existing framework, wisdom and security gained. Include honest reflection on roads not taken and paths chosen. Write 2-3 paragraphs.]
+
+**FUTURE_MESSAGE:**
+[A message from that future self about the current path chosen. Something that acknowledges both the value of stability and any lingering curiosity about alternatives. Format: "Here's what I'd tell you now: ..." Keep it under 50 words.]
+
+Guidelines:
+- Write in first person ("I" perspective)
+- Be realistic about natural career/life progression
+- Include both contentment and occasional restlessness
+- Show the value of stability and consistency
+- Include personal growth within their current framework
+- Consider relationships deepening over time
+- Balance satisfaction with honest "what if" moments
+- Make it personal and relatable
 
 IMPORTANT: Use the exact format markers **YEAR_1:**, **YEAR_3:**, **YEAR_10:**, and **FUTURE_MESSAGE:** so the response can be properly parsed.`;
   }
