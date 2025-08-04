@@ -9,14 +9,20 @@
 ## 🌟 Features
 
 ### Core Functionality
-- **AI-Powered Simulations**: Uses Google's Gemini 1.5 Pro to generate realistic life scenarios
+- **AI-Powered Simulations**: Uses Google's Gemini 2.5 Flash to generate realistic life scenarios
+- **Dual-Path Generation**: AI generates both your current trajectory and alternate path
 - **Multi-Timeline View**: See how your life unfolds at 1, 3, and 10-year marks
 - **Comparison Mode**: Compare your current path vs. alternate path side-by-side
 - **Personalized Results**: Tailored simulations based on your age, location, profession, and personality traits
-- **Future Self Message**: Receive wisdom from your future self
+- **Future Self Messages**: Receive wisdom from your future self for both paths
 
 ### User Experience
 - **Beautiful UI**: Modern, responsive design with Tailwind CSS
+- **User Authentication**: Sign in with Google or email/password
+- **Personal Profiles**: Manage your account and view simulation statistics
+- **Simulation History**: Browse, search, and manage all your past simulations
+- **Favorites System**: Mark and organize your most meaningful simulations
+- **Auto-Save**: Simulations automatically saved when signed in
 - **Smooth Animations**: Engaging transitions and micro-interactions
 - **Download & Share**: Export your simulation results
 - **Mobile Responsive**: Works seamlessly on all devices
@@ -32,17 +38,19 @@
 ### Frontend
 - **React 18** - Modern React with hooks and functional components
 - **Tailwind CSS** - Utility-first CSS framework
-- **React Router** - Client-side routing
+- **React Router** - Client-side routing with protected routes
+- **Firebase SDK** - Authentication and Firestore database
 - **Framer Motion** - Smooth animations
 - **Lucide React** - Beautiful icons
 
 ### Backend
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web application framework
-- **Google Gemini 1.5 Pro** - AI language model
-- **Firebase** - Database and authentication (optional)
+- **Google Gemini 2.5 Flash** - AI language model
+- **Firebase Admin** - Server-side Firebase integration
 - **Helmet** - Security middleware
 - **Rate Limiting** - API protection
+- **Input Validation** - Comprehensive data sanitization
 
 ### Deployment
 - **Vercel** - Frontend hosting
@@ -55,8 +63,8 @@ Before running this project, make sure you have:
 
 - **Node.js 16+** installed
 - **npm or yarn** package manager
-- **Google AI Studio API key** (for Gemini 1.5 Pro)
-- **Firebase project** (optional, for data persistence)
+- **Google AI Studio API key** (for Gemini 2.5 Flash)
+- **Firebase project** (for authentication and Firestore database)
 - **Git** for version control
 
 ## 🛠️ Installation & Setup
@@ -131,8 +139,50 @@ FIREBASE_PRIVATE_KEY=your_firebase_private_key
 FIREBASE_CLIENT_EMAIL=your_firebase_client_email
 ```
 
-#### Frontend
-The frontend uses the backend proxy configuration in `package.json`. For production, update the API endpoints in your frontend code.
+#### Frontend (.env)
+```env
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+
+# API Configuration
+REACT_APP_API_URL=http://localhost:5000
+```
+
+### Firebase Setup
+
+1. **Create Firebase Project**:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Create a new project
+   - Enable Authentication (Google & Email/Password)
+   - Enable Firestore Database
+
+2. **Configure Firestore Rules**:
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // Users can read and write their own user document
+       match /users/{userId} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+       
+       // Users can read and write their own simulations
+       match /simulations/{simulationId} {
+         allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+         allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+       }
+     }
+   }
+   ```
+
+3. **Get Configuration Values**:
+   - Go to Project Settings → General → Your apps
+   - Copy the config values to your `frontend/.env` file
 
 ## 🚀 Deployment
 

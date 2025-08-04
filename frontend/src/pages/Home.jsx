@@ -1,30 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputForm from '../components/InputForm';
 import { Brain, Clock, Users, Lightbulb } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import simulationService from '../services/simulationService';
 
 const Home = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('checking');
+  
+  const { user } = useAuth();
 
-  // Check backend connection on component mount
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/health`);
-        if (response.ok) {
-          setConnectionStatus('connected');
-        } else {
-          setConnectionStatus('error');
-        }
-      } catch (error) {
-        setConnectionStatus('error');
-      }
-    };
 
-    checkConnection();
-  }, []);
 
   const handleSimulation = async (formData) => {
     setIsLoading(true);
@@ -44,13 +31,34 @@ const Home = () => {
 
       const simulationData = await response.json();
       
+      // Save simulation if user is logged in
+      let savedSimulation = null;
+      if (user) {
+        try {
+          savedSimulation = await simulationService.saveSimulation(
+            user.uid,
+            simulationData.simulation,
+            formData
+          );
+          console.log('✅ Simulation saved successfully:', savedSimulation.id);
+        } catch (error) {
+          console.error('❌ Failed to save simulation:', error);
+          console.error('This might be due to missing Firebase configuration.');
+          console.log('💡 To enable saving: Set up Firebase and add config to frontend/.env');
+          // Continue anyway - don't block the user experience
+        }
+      } else {
+        console.log('💡 User not signed in - simulation not saved to history');
+      }
+      
       // Navigate to results page with dual-path simulation data
       navigate('/results', { 
         state: { 
           alternatePath: simulationData.simulation.alternatePath,
           currentPath: simulationData.simulation.currentPath,
           metadata: simulationData.simulation.metadata,
-          originalData: formData 
+          originalData: formData,
+          savedSimulation: savedSimulation // Include saved simulation info
         } 
       });
     } catch (error) {
