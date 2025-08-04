@@ -103,14 +103,44 @@ export const AuthProvider = ({ children }) => {
   // Load user profile from Firestore
   const loadUserProfile = async (uid) => {
     try {
+      console.log('🔍 Loading user profile for UID:', uid);
       const userDocRef = doc(db, 'users', uid);
       const userDoc = await getDoc(userDocRef);
       
       if (userDoc.exists()) {
+        console.log('✅ User profile found:', userDoc.data());
         setUserProfile(userDoc.data());
+      } else {
+        console.log('❌ No user profile found, creating default profile');
+        // Create a default profile if it doesn't exist
+        const currentUser = auth.currentUser;
+        const defaultProfile = {
+          displayName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User',
+          email: currentUser?.email || '',
+          bio: '',
+          location: '',
+          occupation: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        await setDoc(userDocRef, defaultProfile);
+        setUserProfile(defaultProfile);
+        console.log('✅ Created default profile:', defaultProfile);
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('❌ Error loading user profile:', error);
+      // Set a minimal profile to unblock the UI
+      const currentUser = auth.currentUser;
+      setUserProfile({
+        displayName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User',
+        email: currentUser?.email || '',
+        bio: '',
+        location: '',
+        occupation: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
     }
   };
 

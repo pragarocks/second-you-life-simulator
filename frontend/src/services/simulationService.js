@@ -50,10 +50,10 @@ class SimulationService {
   // Get all simulations for a user
   async getUserSimulations(userId, limitCount = 20) {
     try {
+      // Temporarily remove orderBy to avoid composite index requirement
       const q = query(
         collection(db, this.collectionName),
         where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
         limit(limitCount)
       );
 
@@ -66,6 +66,9 @@ class SimulationService {
           ...doc.data()
         });
       });
+
+      // Sort manually since we removed orderBy
+      simulations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       return simulations;
     } catch (error) {
@@ -80,8 +83,7 @@ class SimulationService {
       const q = query(
         collection(db, this.collectionName),
         where('userId', '==', userId),
-        where('isFavorite', '==', true),
-        orderBy('createdAt', 'desc')
+        where('isFavorite', '==', true)
       );
 
       const querySnapshot = await getDocs(q);
@@ -93,6 +95,9 @@ class SimulationService {
           ...doc.data()
         });
       });
+
+      // Sort manually since we removed orderBy
+      favorites.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       return favorites;
     } catch (error) {

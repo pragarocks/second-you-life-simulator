@@ -10,7 +10,7 @@ import Profile from './pages/Profile';
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
           <Header />
           <main className="container mx-auto px-4 py-8">

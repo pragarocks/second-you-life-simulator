@@ -25,11 +25,24 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [stats, setStats] = useState({
     totalSimulations: 0,
     favoriteSimulations: 0,
     recentActivity: null
   });
+
+  // Timeout safety - if profile doesn't load in 10 seconds, show fallback
+  useEffect(() => {
+    if (user && !userProfile) {
+      const timeout = setTimeout(() => {
+        console.log('⏰ Profile loading timeout - showing fallback');
+        setLoadingTimeout(true);
+      }, 10000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [user, userProfile]);
 
   const loadUserStats = useCallback(async () => {
     if (!user) return;
@@ -55,24 +68,35 @@ const Profile = () => {
     }
   }, [user]);
 
+  // Create fallback profile if needed
+  const fallbackProfile = {
+    displayName: user?.displayName || user?.email?.split('@')[0] || 'User',
+    email: user?.email || '',
+    bio: '',
+    location: '',
+    occupation: '',
+    createdAt: new Date().toISOString()
+  };
+
   useEffect(() => {
     if (!user) {
       navigate('/');
       return;
     }
     
-    if (userProfile) {
+    if (userProfile || loadingTimeout) {
+      const profile = userProfile || fallbackProfile;
       setEditedProfile({
-        displayName: userProfile.displayName || '',
-        email: userProfile.email || '',
-        bio: userProfile.bio || '',
-        location: userProfile.location || '',
-        occupation: userProfile.occupation || ''
+        displayName: profile.displayName || '',
+        email: profile.email || '',
+        bio: profile.bio || '',
+        location: profile.location || '',
+        occupation: profile.occupation || ''
       });
     }
     
     loadUserStats();
-  }, [user, userProfile, navigate, loadUserStats]);
+  }, [user, userProfile, navigate, loadUserStats, loadingTimeout]);
 
   const handleSaveProfile = async () => {
     setLoading(true);
@@ -94,12 +118,13 @@ const Profile = () => {
   };
 
   const handleCancelEdit = () => {
+    const profile = userProfile || fallbackProfile;
     setEditedProfile({
-      displayName: userProfile.displayName || '',
-      email: userProfile.email || '',
-      bio: userProfile.bio || '',
-      location: userProfile.location || '',
-      occupation: userProfile.occupation || ''
+      displayName: profile.displayName || '',
+      email: profile.email || '',
+      bio: profile.bio || '',
+      location: profile.location || '',
+      occupation: profile.occupation || ''
     });
     setIsEditing(false);
   };
@@ -122,14 +147,41 @@ const Profile = () => {
     });
   };
 
-  if (!user || !userProfile) {
+  // Debug: Show what we have
+  console.log('Profile Debug:', { 
+    hasUser: !!user, 
+    userEmail: user?.email,
+    hasUserProfile: !!userProfile,
+    userProfileData: userProfile 
+  });
+
+  if (!user) {
     return (
       <div className="text-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-        <p className="text-slate-600">Loading profile...</p>
+        <p className="text-slate-600">Loading user...</p>
       </div>
     );
   }
+
+  if (!userProfile && !loadingTimeout) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+        <p className="text-slate-600">Loading profile data...</p>
+        <p className="text-sm text-slate-500 mt-2">User: {user.email}</p>
+        <button 
+          onClick={() => navigate('/')}
+          className="mt-4 text-primary-600 hover:text-primary-700"
+        >
+          ← Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  // Use the actual profile or fallback
+  const displayProfile = userProfile || fallbackProfile;
 
   return (
     <div className="max-w-4xl mx-auto">
