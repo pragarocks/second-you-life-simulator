@@ -5,6 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
+const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 
 const simulateRoutes = require('./routes/simulate');
@@ -15,8 +17,36 @@ const PORT = process.env.PORT || 5000;
 // Trust proxy for rate limiting (fixes the warning)
 app.set('trust proxy', true);
 
-// Security middleware
-app.use(helmet());
+// Security middleware with CSP allowing Firebase/Google auth
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "script-src": ["'self'", "https://apis.google.com", "https://www.gstatic.com", "https://www.googletagmanager.com"],
+      "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      "img-src": ["'self'", "data:", "https:"],
+      "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+      "connect-src": [
+        "'self'",
+        "https://www.googleapis.com",
+        "https://firestore.googleapis.com",
+        "https://securetoken.googleapis.com",
+        "https://identitytoolkit.googleapis.com",
+        "https://apis.google.com",
+        "https://*.googleapis.com"
+      ],
+      "frame-src": [
+        "'self'",
+        "https://accounts.google.com",
+        "https://apis.google.com",
+        "https://*.firebaseapp.com"
+      ]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -30,11 +60,30 @@ const limiter = rateLimit({
 // Apply rate limiting to API routes
 app.use('/api/', limiter);
 
-// CORS configuration
+// CORS configuration (configurable via ALLOWED_ORIGINS, comma-separated)
+const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || '';
+const allowedOrigins = allowedOriginsEnv
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-vercel-domain.vercel.app'] 
-    : ['http://localhost:3000'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    const isProd = process.env.NODE_ENV === 'production';
+    const defaultDevOrigins = ['http://localhost:3000'];
+    const defaultProdOrigins = ['https://your-vercel-domain.vercel.app'];
+    const effectiveAllowed = allowedOrigins.length > 0
+      ? allowedOrigins
+      : (isProd ? defaultProdOrigins : defaultDevOrigins);
+
+    if (effectiveAllowed.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true
 }));
 
@@ -58,8 +107,18 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/simulate', simulateRoutes);
 
-// 404 handler
-app.use('*', (req, res) => {
+// Serve frontend static files if present (deploying SPA and API on same App Service)
+const publicDir = path.join(__dirname, 'public');
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+  // SPA fallback for non-API routes
+  app.get(/^(?!\/api).*/, (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+}
+
+// 404 handler for unknown API routes only
+app.use('/api/*', (req, res) => {
   res.status(404).json({ 
     error: 'Route not found',
     message: 'The requested endpoint does not exist.'

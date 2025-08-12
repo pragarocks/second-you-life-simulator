@@ -11,25 +11,68 @@ const Home = () => {
   
   const { user } = useAuth();
 
+  // Track free runs in localStorage
+  const getFreeRunsUsed = () => {
+    const v = localStorage.getItem('free_runs_used');
+    return v ? parseInt(v, 10) : 0;
+  };
 
+  const incFreeRunsUsed = () => {
+    localStorage.setItem('free_runs_used', String(getFreeRunsUsed() + 1));
+  };
+
+  const getUserGeminiKey = () => localStorage.getItem('user_gemini_api_key') || '';
+  const setUserGeminiKey = (key) => localStorage.setItem('user_gemini_api_key', key);
+
+  const ensureUserKeyIfNeeded = async () => {
+    // Allow first 3 runs without key
+    if (getFreeRunsUsed() < 3) return '';
+
+    // After 3 runs, require sign-in and user key
+    if (!user) {
+      alert('Please sign in to continue after 3 free simulations.');
+      throw new Error('signin-required');
+    }
+
+    let key = getUserGeminiKey();
+    if (!key) {
+      const url = 'https://makersuite.google.com/app/apikey';
+      const input = window.prompt(
+        `Enter your Google Gemini API key (get it free at ${url})`,
+        ''
+      );
+      if (!input) throw new Error('user-key-required');
+      setUserGeminiKey(input.trim());
+      key = input.trim();
+    }
+    return key;
+  };
 
   const handleSimulation = async (formData) => {
     setIsLoading(true);
     
     try {
+      const apiKey = await ensureUserKeyIfNeeded();
+
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/simulate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiKey ? { 'x-gemini-key': apiKey } : {}),
         },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          alert('A Gemini API key is required. Please provide your key to continue.');
+          localStorage.removeItem('user_gemini_api_key');
+        }
         throw new Error('Simulation failed');
       }
 
       const simulationData = await response.json();
+      if (getFreeRunsUsed() < 3) incFreeRunsUsed();
       
       // Save simulation if user is logged in
       let savedSimulation = null;
@@ -43,32 +86,23 @@ const Home = () => {
           console.log('✅ Simulation saved successfully:', savedSimulation.id);
         } catch (error) {
           console.error('❌ Failed to save simulation:', error);
-          console.error('This might be due to missing Firebase configuration.');
-          console.log('💡 To enable saving: Set up Firebase and add config to frontend/.env');
-          // Continue anyway - don't block the user experience
         }
-      } else {
-        console.log('💡 User not signed in - simulation not saved to history');
       }
       
-      // Navigate to results page with dual-path simulation data
       navigate('/results', { 
         state: { 
           alternatePath: simulationData.simulation.alternatePath,
           currentPath: simulationData.simulation.currentPath,
           metadata: simulationData.simulation.metadata,
           originalData: formData,
-          savedSimulation: savedSimulation // Include saved simulation info
+          savedSimulation: savedSimulation
         } 
       });
     } catch (error) {
       console.error('Error during simulation:', error);
-      
-      if (error.message.includes('fetch')) {
-        alert('⚠️ Connection Error: Please make sure the backend server is running on http://localhost:5000\n\nTry: npm run start:clean');
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
+      if (error.message === 'signin-required') return;
+      if (error.message === 'user-key-required') return;
+      alert('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -85,9 +119,7 @@ const Home = () => {
           What if you made that big decision differently? Use AI to simulate alternate life paths 
           and discover the possibilities that await in your parallel futures.
         </p>
-        
 
-        
         {/* Feature Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-12">
           <div className="card text-center">

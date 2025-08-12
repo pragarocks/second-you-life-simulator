@@ -1,10 +1,10 @@
 const { GoogleGenAI } = require('@google/genai');
 
 class GeminiClient {
-  constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY;
+  constructor(apiKeyOverride) {
+    this.apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
     if (!this.apiKey) {
-      console.error('❌ GEMINI_API_KEY environment variable is not set');
+      console.error('❌ No Gemini API key provided');
       throw new Error('GEMINI_API_KEY is required');
     }
 

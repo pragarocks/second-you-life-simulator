@@ -3,8 +3,8 @@ const router = express.Router();
 const GeminiClient = require('../services/geminiClient');
 const { validateSimulationInput } = require('../utils/validation');
 
-// Create the client instance after dotenv has loaded
-const geminiClient = new GeminiClient();
+// Will create a client per-request, optionally using a user-provided key
+
 
 // POST /api/simulate
 router.post('/', async (req, res) => {
@@ -27,8 +27,12 @@ router.post('/', async (req, res) => {
       alternatePath: alternatePath.substring(0, 100) + '...'
     });
 
+    // Optional: user-provided API key via header 'x-gemini-key'
+    const userApiKey = req.header('x-gemini-key');
+    const client = new GeminiClient(userApiKey);
+
     // Generate simulation using Gemini AI
-    const simulation = await geminiClient.generateLifeSimulation({
+    const simulation = await client.generateLifeSimulation({
       user_age: age,
       user_location: location,
       user_profession: profession,
@@ -59,9 +63,9 @@ router.post('/', async (req, res) => {
 
     // Handle specific error types
     if (error.message.includes('API_KEY')) {
-      return res.status(500).json({
-        error: 'Configuration Error',
-        message: 'AI service is not properly configured. Please try again later.'
+      return res.status(401).json({
+        error: 'API Key Required',
+        message: 'Please provide a valid Gemini API key.'
       });
     }
 
