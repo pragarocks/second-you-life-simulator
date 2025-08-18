@@ -2,7 +2,7 @@
 
 > Explore alternate life paths through AI-powered simulations
 
-**Second You** is a full-stack web application that helps users simulate alternate life paths based on critical decisions they've made or are considering. Using advanced AI (Gemini 2.5 Flash), the system generates realistic 1, 3, and 10-year future timelines based on the user's current life situation and alternate choices.
+**Second You** is a full-stack web application that helps users simulate alternate life paths based on critical decisions they've made or are considering. Using advanced AI (Gemini 2.5 Flash), the system generates realistic 1, 3, and 10-year future timelines based on the user's current life situation and alternate choices. you can check the Website here https://cts-vibeappea2702-5.azurewebsites.net/
 
 🌟 **Now featuring complete user authentication, personal profiles, simulation history, and favorites system!**
 
